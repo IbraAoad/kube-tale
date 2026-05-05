@@ -16,7 +16,7 @@
 - Test (all):     `go test -race ./...`
 - Test (single):  `go test -race ./internal/timeline/`
 - Vet:            `go vet ./...`
-- Lint:           `golangci-lint run` (config: `.golangci.yml`)
+- Lint:           `golangci-lint run` (config: `.golangci.yml`, v2 format)
 - Mod tidy:       `go mod tidy`
 
 ## CI
