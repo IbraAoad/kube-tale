@@ -1,3 +1,4 @@
+// Package timeline merges events from multiple data sources into a sorted, deduplicated timeline.
 package timeline
 
 import (
@@ -10,6 +11,9 @@ import (
 	"github.com/IbraAoad/kube-tale/internal/types"
 )
 
+// Build fetches events from all three DataSource methods, merges them
+// chronologically, and removes duplicates. Returns an empty slice when
+// no events are found.
 func Build(ctx context.Context, c client.DataSource, namespace string, since, until time.Time) (types.Timeline, error) {
 	events, err := c.Events(ctx, namespace, since, until)
 	if err != nil {

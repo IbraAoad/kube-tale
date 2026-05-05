@@ -13,9 +13,9 @@ import (
 )
 
 type inputData struct {
-	Events             []types.Event `json:"events"`
-	PodHistory         []types.Event `json:"pod_history"`
-	ReplicaSetHistory  []types.Event `json:"replicaset_history"`
+	Events            []types.Event `json:"events"`
+	PodHistory        []types.Event `json:"pod_history"`
+	ReplicaSetHistory []types.Event `json:"replicaset_history"`
 }
 
 func loadInput(t *testing.T, path string) inputData {
@@ -46,13 +46,13 @@ func loadExpected(t *testing.T, path string) types.Timeline {
 
 func newMockClient(in inputData) *client.MockClient {
 	return &client.MockClient{
-		EventsFn: func(ctx context.Context, namespace string, since, until time.Time) ([]types.Event, error) {
+		EventsFn: func(_ context.Context, _ string, _, _ time.Time) ([]types.Event, error) {
 			return in.Events, nil
 		},
-		PodHistoryFn: func(ctx context.Context, namespace string, since, until time.Time) ([]types.Event, error) {
+		PodHistoryFn: func(_ context.Context, _ string, _, _ time.Time) ([]types.Event, error) {
 			return in.PodHistory, nil
 		},
-		ReplicaSetHistoryFn: func(ctx context.Context, namespace string, since, until time.Time) ([]types.Event, error) {
+		ReplicaSetHistoryFn: func(_ context.Context, _ string, _, _ time.Time) ([]types.Event, error) {
 			return in.ReplicaSetHistory, nil
 		},
 	}
