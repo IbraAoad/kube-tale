@@ -1,0 +1,29 @@
+{
+  "before": {
+    "running_pods": 2,
+    "crash_loop_pods": 0,
+    "total_restarts": 0,
+    "event_count": 4,
+    "warning_count": 0,
+    "error_count": 0,
+    "ready_replicas": 2
+  },
+  "after": {
+    "running_pods": 1,
+    "crash_loop_pods": 1,
+    "total_restarts": 2,
+    "event_count": 7,
+    "warning_count": 0,
+    "error_count": 1,
+    "ready_replicas": 1
+  },
+  "delta": {
+    "running_pods": -1,
+    "crash_loop_pods": 1,
+    "total_restarts": 2,
+    "event_count": 3,
+    "warning_count": 0,
+    "error_count": 1,
+    "ready_replicas": -1
+  }
+}
