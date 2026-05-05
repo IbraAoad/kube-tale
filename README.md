@@ -12,62 +12,76 @@ kube-tale is organized into four modules:
 
 | Module | Description | Status |
 |--------|-------------|--------|
-| **timeline** | Merged, sorted sequence of everything that happened (deployments, pod lifecycle, events, restarts) | Planned |
-| **story** | Compressed human narrative — "This broke after a deployment update due to startup failures leading to crash loops." | Planned |
-| **why** | Probabilistic root-cause guess using pattern-based scoring (OOMKilled, CrashLoopBackOff, probe failures, etc.) | Planned |
-| **diff** | State comparison between two points in time (before/after deployment or incident) | Planned |
+| **timeline** | Merged, sorted sequence of everything that happened (deployments, pod lifecycle, events, restarts) | Done |
+| **story** | Compressed human narrative — "This broke after a deployment update due to startup failures leading to crash loops." | Done |
+| **why** | Probabilistic root-cause guess using pattern-based scoring (OOMKilled, CrashLoopBackOff, probe failures, etc.) | Done |
+| **diff** | State comparison between two points in time (before/after deployment or incident) | Done |
 
-## Why kube-tale?
+## Prerequisites
 
-Debugging Kubernetes incidents means context-switching between `kubectl describe`, `kubectl events`, `kubectl rollout status`, and various dashboards. kube-tale brings it all together in one command.
-
-```
-$ kube-tale timeline --deployment api --namespace default --since 1h
-
-[10:01] Deployment api updated (image: v1.2 → v1.3)
-[10:02] Pod api-7d9 restarted (container started)
-[10:03] Readiness probe failed (HTTP 500)
-[10:04] Pod api-7d9 restarted (CrashLoopBackOff)
-[10:06] New pod created: api-8a1
-[10:07] Pod api-8a1 became Ready
-```
+- **Go 1.26+** (or download pre-built binary from [Releases](https://github.com/IbraAoad/kube-tale/releases))
+- **Kubernetes cluster** — any K8s distribution (k3s, kind, minikube, production)
+- **kubectl** — optional, for manual verification
 
 ## Installation
 
-_Coming soon._
-
 ```bash
-go install github.com/<you>/kube-tale@latest
+# Install via Go
+go install github.com/IbraAoad/kube-tale@latest
+
+# Or build from source
+git clone https://github.com/IbraAoad/kube-tale
+cd kube-tale
+go build -o kube-tale ./cmd/kube-tale
 ```
 
-Or download binaries from [Releases](https://github.com/<you>/kube-tale/releases).
+Or download pre-built binaries from [Releases](https://github.com/IbraAoad/kube-tale/releases).
 
 ## Quick Start
 
 ```bash
-# Show timeline for a deployment
-kube-tale timeline --deployment api --namespace default --since 1h
+# Show timeline for a namespace (auto-detects kubeconfig)
+kube-tale timeline --namespace default --since 1h
 
 # Show human-readable story
-kube-tale story --deployment api --namespace default --since 1h
+kube-tale story --namespace default --since 1h
 
 # Guess root cause
-kube-tale why --deployment api --namespace default --since 1h
+kube-tale why --namespace default --since 1h
 
-# Diff state before and after an incident
-kube-tale diff --deployment api --namespace default --since 1h --until 30m
+# Diff state before and after a point in time
+kube-tale diff --namespace default --since 2h --until 1h
+
+# Explicit kubeconfig
+kube-tale timeline --namespace kube-system --kubeconfig ~/.kube/config --since 30m
+```
+
+Example output:
+
+```
+$ kube-tale story --namespace default --since 1h
+Deployment api was updated (image: v1.2 → v1.3).
+Pod api-7d9 was created but entered a crash loop (3 restarts).
+```
+
+```
+$ kube-tale why --namespace default --since 1h
+Root cause hypotheses:
+  1. Crash Loop (confidence: 0.70)
+     → Back-off restarting failed container
+     → Back-off restarting failed container
+     → Back-off restarting failed container
 ```
 
 ## Architecture
 
-kube-tale uses only standard Kubernetes data sources:
+kube-tale uses only standard Kubernetes data sources via `client-go`:
 
-- **core/v1 Events** — Kubernetes event stream
+- **core/v1 Events** — Kubernetes event stream (with reason-to-kind mapping)
 - **Pod status / container status** — `containerStatuses` including restart counts, last state, ready state
-- **Deployments + ReplicaSet history** — deployment conditions, RS generation changes
+- **Deployments + ReplicaSet history** — deployment conditions and progress
 
-Optional (future):
-- **metrics-server** — CPU/memory signals for OOM correlation
+All cluster access goes through a single `DataSource` interface, making the correlation engine fully testable without a real cluster.
 
 ## Development
 
@@ -75,8 +89,14 @@ Optional (future):
 # Build
 go build -o kube-tale ./cmd/kube-tale
 
-# Run tests
-go test ./...
+# Run unit tests
+go test -race -cover ./...
+
+# Run lint
+golangci-lint run
+
+# Integration tests (requires a running K8s cluster)
+go test -race -v -tags=integration ./internal/client/ ./cmd/kube-tale/
 ```
 
 ## Contributing
