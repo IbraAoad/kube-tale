@@ -1,0 +1,2 @@
+Deployment api was updated (image: v1.2 → v1.3).
+Pod api-7d9 was created but entered a crash loop (3 restarts).

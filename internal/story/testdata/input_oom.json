@@ -1,0 +1,9 @@
+[
+  {
+    "timestamp": "2026-05-05T10:01:00Z",
+    "kind": "PodOOMKilled",
+    "namespace": "default",
+    "source": "pod/api-7d9",
+    "message": "Pod api-7d9 was OOMKilled"
+  }
+]
