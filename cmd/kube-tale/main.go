@@ -56,17 +56,19 @@ Commands:
   version     Print version
 
 Flags:
-  --namespace string   Kubernetes namespace (default "default")
-  --since duration     Start of time window, relative to now (default 1h)
-  --until duration     End of time window, relative to now (default 0s = now)
+  --namespace string    Kubernetes namespace (default "default")
+  --since duration      Start of time window, relative to now (default 1h)
+  --until duration      End of time window, relative to now (default 0s = now)
+  --kubeconfig string   Path to kubeconfig file
 `)
 }
 
-func parseSharedFlags(args []string) (namespace string, since, until time.Duration) {
+func parseSharedFlags(args []string) (namespace, kubeconfig string, since, until time.Duration) {
 	fs := flag.NewFlagSet("shared", flag.ContinueOnError)
 	fs.StringVar(&namespace, "namespace", "default", "Kubernetes namespace")
 	fs.DurationVar(&since, "since", 1*time.Hour, "start of time window")
 	fs.DurationVar(&until, "until", 0, "end of time window (0 = now)")
+	fs.StringVar(&kubeconfig, "kubeconfig", "", "path to kubeconfig file")
 	_ = fs.Parse(args)
 	return
 }
@@ -79,7 +81,38 @@ func parseDiffFlags(args []string) (before, after time.Duration) {
 	return
 }
 
-func newDataSource() client.DataSource {
+func newDataSource(kubeconfig string) client.DataSource {
+	if kubeconfig == "" {
+		kubeconfig = os.Getenv("KUBECONFIG")
+	}
+	if kubeconfig != "" {
+		rc, err := client.NewRealClient(kubeconfig)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "warning: failed to create real client: %v, falling back to mock data\n", err)
+		} else {
+			return rc
+		}
+	}
+	fmt.Fprintf(os.Stderr, "warning: no kubeconfig found, using mock data\n")
+	return newMockDataSource()
+}
+
+func newMockDataSource() client.DataSource {
+	mockEvents := []types.Event{
+		{Timestamp: time.Date(2026, 5, 5, 10, 3, 0, 0, time.UTC), Kind: types.EventWarning, Source: "pod/api-7d9", Message: "Readiness probe failed (HTTP 500)"},
+	}
+
+	mockPodHistory := []types.Event{
+		{Timestamp: time.Date(2026, 5, 5, 10, 2, 0, 0, time.UTC), Kind: types.PodCreated, Source: "pod/api-7d9", Message: "Pod api-7d9 created"},
+		{Timestamp: time.Date(2026, 5, 5, 10, 4, 0, 0, time.UTC), Kind: types.CrashLoopBackOff, Source: "pod/api-7d9", Message: "Back-off restarting failed container"},
+		{Timestamp: time.Date(2026, 5, 5, 10, 5, 0, 0, time.UTC), Kind: types.CrashLoopBackOff, Source: "pod/api-7d9", Message: "Back-off restarting failed container"},
+		{Timestamp: time.Date(2026, 5, 5, 10, 6, 0, 0, time.UTC), Kind: types.CrashLoopBackOff, Source: "pod/api-7d9", Message: "Back-off restarting failed container"},
+	}
+
+	mockReplicaSetHistory := []types.Event{
+		{Timestamp: time.Date(2026, 5, 5, 10, 1, 0, 0, time.UTC), Kind: types.DeploymentUpdate, Source: "deployment/api", Message: "Deployment api updated (image: v1.2 → v1.3)", Details: map[string]string{"old_image": "v1.2", "new_image": "v1.3"}},
+	}
+
 	return &client.MockClient{
 		EventsFn: func(_ context.Context, _ string, _, _ time.Time) ([]types.Event, error) {
 			return mockEvents, nil
@@ -93,24 +126,9 @@ func newDataSource() client.DataSource {
 	}
 }
 
-var mockEvents = []types.Event{
-	{Timestamp: time.Date(2026, 5, 5, 10, 3, 0, 0, time.UTC), Kind: types.EventWarning, Source: "pod/api-7d9", Message: "Readiness probe failed (HTTP 500)"},
-}
-
-var mockPodHistory = []types.Event{
-	{Timestamp: time.Date(2026, 5, 5, 10, 2, 0, 0, time.UTC), Kind: types.PodCreated, Source: "pod/api-7d9", Message: "Pod api-7d9 created"},
-	{Timestamp: time.Date(2026, 5, 5, 10, 4, 0, 0, time.UTC), Kind: types.CrashLoopBackOff, Source: "pod/api-7d9", Message: "Back-off restarting failed container"},
-	{Timestamp: time.Date(2026, 5, 5, 10, 5, 0, 0, time.UTC), Kind: types.CrashLoopBackOff, Source: "pod/api-7d9", Message: "Back-off restarting failed container"},
-	{Timestamp: time.Date(2026, 5, 5, 10, 6, 0, 0, time.UTC), Kind: types.CrashLoopBackOff, Source: "pod/api-7d9", Message: "Back-off restarting failed container"},
-}
-
-var mockReplicaSetHistory = []types.Event{
-	{Timestamp: time.Date(2026, 5, 5, 10, 1, 0, 0, time.UTC), Kind: types.DeploymentUpdate, Source: "deployment/api", Message: "Deployment api updated (image: v1.2 → v1.3)", Details: map[string]string{"old_image": "v1.2", "new_image": "v1.3"}},
-}
-
 func cmdTimeline(args []string) {
-	namespace, since, until := parseSharedFlags(args)
-	ds := newDataSource()
+	namespace, kubeconfig, since, until := parseSharedFlags(args)
+	ds := newDataSource(kubeconfig)
 	now := time.Now()
 	tl, err := timeline.Build(context.Background(), ds, namespace, now.Add(-since), now.Add(-until))
 	if err != nil {
@@ -122,8 +140,8 @@ func cmdTimeline(args []string) {
 }
 
 func cmdStory(args []string) {
-	namespace, since, until := parseSharedFlags(args)
-	ds := newDataSource()
+	namespace, kubeconfig, since, until := parseSharedFlags(args)
+	ds := newDataSource(kubeconfig)
 	now := time.Now()
 	tl, err := timeline.Build(context.Background(), ds, namespace, now.Add(-since), now.Add(-until))
 	if err != nil {
@@ -134,8 +152,8 @@ func cmdStory(args []string) {
 }
 
 func cmdWhy(args []string) {
-	namespace, since, until := parseSharedFlags(args)
-	ds := newDataSource()
+	namespace, kubeconfig, since, until := parseSharedFlags(args)
+	ds := newDataSource(kubeconfig)
 	now := time.Now()
 	tl, err := timeline.Build(context.Background(), ds, namespace, now.Add(-since), now.Add(-until))
 	if err != nil {
@@ -159,15 +177,17 @@ func cmdWhy(args []string) {
 func cmdDiff(args []string) {
 	_ = flag.NewFlagSet("diff", flag.ContinueOnError)
 	before, after := parseDiffFlags(args)
-	ds := newDataSource()
+	_ = flag.NewFlagSet("diff", flag.ContinueOnError)
+	namespace, kubeconfig, _, _ := parseSharedFlags(args)
+	ds := newDataSource(kubeconfig)
 	now := time.Now()
 
-	beforeTL, err := timeline.Build(context.Background(), ds, "default", now.Add(-before), now.Add(-after))
+	beforeTL, err := timeline.Build(context.Background(), ds, namespace, now.Add(-before), now.Add(-after))
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "error: %v\n", err)
 		os.Exit(1)
 	}
-	afterTL, err := timeline.Build(context.Background(), ds, "default", now.Add(-after), now)
+	afterTL, err := timeline.Build(context.Background(), ds, namespace, now.Add(-after), now)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "error: %v\n", err)
 		os.Exit(1)

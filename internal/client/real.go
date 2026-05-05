@@ -80,12 +80,19 @@ func (r *RealClient) PodHistory(ctx context.Context, namespace string, since, un
 		return nil, fmt.Errorf("podhistory: list: %w", err)
 	}
 
+	untilZero := until.IsZero()
+
 	var events []types.Event
 	for _, pod := range pods.Items {
 		if pod.CreationTimestamp.Time.Before(since) {
 			continue
 		}
-		events = append(events, podEvents(&pod)...)
+		for _, e := range podEvents(&pod) {
+			if !untilZero && e.Timestamp.After(until) {
+				continue
+			}
+			events = append(events, e)
+		}
 	}
 	return events, nil
 }
@@ -154,6 +161,7 @@ func podEvents(pod *corev1.Pod) []types.Event {
 
 	return events
 }
+
 // ReplicaSetHistory derives deployment update events from Deployments and their ReplicaSets.
 func (r *RealClient) ReplicaSetHistory(ctx context.Context, namespace string, since, until time.Time) ([]types.Event, error) {
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
@@ -197,16 +205,16 @@ func mapEventKind(eventType, reason, message string) types.EventKind {
 	}
 
 	reasonMap := map[string]types.EventKind{
-		"BackOff":             types.CrashLoopBackOff,
-		"CrashLoopBackOff":    types.CrashLoopBackOff,
-		"ErrImagePull":        types.ImagePullBackOff,
-		"ImagePullBackOff":    types.ImagePullBackOff,
-		"OOMKilling":          types.PodOOMKilled,
-		"OOMKilled":           types.PodOOMKilled,
-		"Unhealthy":           types.ProbeFailed,
-		"Evicted":             types.PodEvicted,
-		"FailedScheduling":    types.EventWarning,
-		"FailedMount":         types.EventWarning,
+		"BackOff":                types.CrashLoopBackOff,
+		"CrashLoopBackOff":       types.CrashLoopBackOff,
+		"ErrImagePull":           types.ImagePullBackOff,
+		"ImagePullBackOff":       types.ImagePullBackOff,
+		"OOMKilling":             types.PodOOMKilled,
+		"OOMKilled":              types.PodOOMKilled,
+		"Unhealthy":              types.ProbeFailed,
+		"Evicted":                types.PodEvicted,
+		"FailedScheduling":       types.EventWarning,
+		"FailedMount":            types.EventWarning,
 		"FailedCreatePodSandBox": types.EventWarning,
 	}
 
