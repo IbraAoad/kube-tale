@@ -1,0 +1,10 @@
+[
+  {
+    "cause": "Bad Image",
+    "confidence": 0.85,
+    "evidence": [
+      "Back-off pulling image nginx:99",
+      "Back-off pulling image nginx:99"
+    ]
+  }
+]
