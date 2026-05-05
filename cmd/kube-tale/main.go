@@ -1,3 +1,4 @@
+// Binary kube-tale correlates Kubernetes signals into incident narratives.
 package main
 
 import (
@@ -8,5 +9,7 @@ import (
 var version = "0.0.0-dev"
 
 func main() {
-	fmt.Fprintf(os.Stdout, "kube-tale %s\n", version)
+	if _, err := fmt.Fprintf(os.Stdout, "kube-tale %s\n", version); err != nil {
+		os.Exit(1)
+	}
 }

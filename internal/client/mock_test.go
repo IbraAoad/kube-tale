@@ -12,7 +12,7 @@ import (
 func TestMockClientEventsDelegates(t *testing.T) {
 	want := []types.Event{{Kind: types.PodReady, Message: "ok"}}
 	mc := &MockClient{
-		EventsFn: func(ctx context.Context, namespace string, since, until time.Time) ([]types.Event, error) {
+		EventsFn: func(_ context.Context, _ string, _, _ time.Time) ([]types.Event, error) {
 			return want, nil
 		},
 	}
@@ -36,7 +36,7 @@ func TestMockClientEventsNilFn(t *testing.T) {
 func TestMockClientPodHistoryDelegates(t *testing.T) {
 	want := []types.Event{{Kind: types.CrashLoopBackOff, Message: "crash"}}
 	mc := &MockClient{
-		PodHistoryFn: func(ctx context.Context, namespace string, since, until time.Time) ([]types.Event, error) {
+		PodHistoryFn: func(_ context.Context, _ string, _, _ time.Time) ([]types.Event, error) {
 			return want, nil
 		},
 	}
@@ -60,7 +60,7 @@ func TestMockClientPodHistoryNilFn(t *testing.T) {
 func TestMockClientReplicaSetHistoryDelegates(t *testing.T) {
 	want := []types.Event{{Kind: types.DeploymentUpdate, Message: "updated"}}
 	mc := &MockClient{
-		ReplicaSetHistoryFn: func(ctx context.Context, namespace string, since, until time.Time) ([]types.Event, error) {
+		ReplicaSetHistoryFn: func(_ context.Context, _ string, _, _ time.Time) ([]types.Event, error) {
 			return want, nil
 		},
 	}
@@ -84,7 +84,7 @@ func TestMockClientReplicaSetHistoryNilFn(t *testing.T) {
 func TestMockClientErrorPropagation(t *testing.T) {
 	testErr := errors.New("simulated failure")
 	mc := &MockClient{
-		EventsFn: func(ctx context.Context, namespace string, since, until time.Time) ([]types.Event, error) {
+		EventsFn: func(_ context.Context, _ string, _, _ time.Time) ([]types.Event, error) {
 			return nil, testErr
 		},
 	}

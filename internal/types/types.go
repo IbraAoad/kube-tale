@@ -1,7 +1,9 @@
+// Package types defines shared data structures for kube-tale.
 package types
 
 import "time"
 
+// Event is a single entry in a timeline.
 type Event struct {
 	Timestamp time.Time         `json:"timestamp"`
 	Kind      EventKind         `json:"kind"`
@@ -11,8 +13,10 @@ type Event struct {
 	Details   map[string]string `json:"details,omitempty"`
 }
 
+// EventKind classifies the type of event.
 type EventKind string
 
+// Event kind constants for pod lifecycle, failures, probes, and workload changes.
 const (
 	PodCreated    EventKind = "PodCreated"
 	PodReady      EventKind = "PodReady"
@@ -33,4 +37,5 @@ const (
 	EventNormal  EventKind = "EventNormal"
 )
 
+// Timeline is a sorted, deduplicated slice of Events (oldest first).
 type Timeline []Event
