@@ -1,7 +1,9 @@
+// Package diff compares state snapshots between two points in time.
 package diff
 
 import "github.com/IbraAoad/kube-tale/internal/types"
 
+// StateSnapshot aggregates key metrics from a timeline.
 type StateSnapshot struct {
 	RunningPods   int `json:"running_pods"`
 	CrashLoopPods int `json:"crash_loop_pods"`
@@ -12,12 +14,14 @@ type StateSnapshot struct {
 	ReadyReplicas int `json:"ready_replicas"`
 }
 
+// Result holds the before/after snapshots and their delta.
 type Result struct {
 	Before StateSnapshot `json:"before"`
 	After  StateSnapshot `json:"after"`
 	Delta  StateSnapshot `json:"delta"`
 }
 
+// Compare analyzes two timelines (before and after a point in time) and returns the state difference.
 func Compare(before, after types.Timeline) Result {
 	beforeSnap := snapshot(before)
 	afterSnap := snapshot(after)

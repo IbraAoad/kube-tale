@@ -1,3 +1,4 @@
+// Package story compresses a timeline into a human-readable incident narrative.
 package story
 
 import (
@@ -7,6 +8,7 @@ import (
 	"github.com/IbraAoad/kube-tale/internal/types"
 )
 
+// Generate produces a human-readable narrative string from a sorted timeline.
 func Generate(timeline types.Timeline) string {
 	if len(timeline) == 0 {
 		return ""

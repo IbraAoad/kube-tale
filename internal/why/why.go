@@ -1,3 +1,4 @@
+// Package why performs pattern-based root-cause analysis on a timeline.
 package why
 
 import (
@@ -6,6 +7,7 @@ import (
 	"github.com/IbraAoad/kube-tale/internal/types"
 )
 
+// Hypothesis represents a possible root cause with supporting evidence.
 type Hypothesis struct {
 	Cause      string   `json:"cause"`
 	Confidence float64  `json:"confidence"`
@@ -21,6 +23,7 @@ var matchers = []matcher{
 	matchProbeFailure,
 }
 
+// Analyze scans the timeline and returns ranked hypotheses (highest confidence first).
 func Analyze(timeline types.Timeline) []Hypothesis {
 	if len(timeline) == 0 {
 		return nil

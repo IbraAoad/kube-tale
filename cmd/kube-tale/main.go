@@ -20,11 +20,6 @@ import (
 var version = "0.0.0-dev"
 
 func main() {
-<<<<<<< HEAD
-	if _, err := fmt.Fprintf(os.Stdout, "kube-tale %s\n", version); err != nil {
-		os.Exit(1)
-	}
-=======
 	if len(os.Args) < 2 {
 		printUsage()
 		os.Exit(1)
@@ -40,7 +35,9 @@ func main() {
 	case "diff":
 		cmdDiff(os.Args[2:])
 	case "version":
-		fmt.Printf("kube-tale %s\n", version)
+		if _, err := fmt.Fprintf(os.Stdout, "kube-tale %s\n", version); err != nil {
+			os.Exit(1)
+		}
 	default:
 		fmt.Fprintf(os.Stderr, "unknown command: %s\n", os.Args[1])
 		printUsage()
@@ -70,7 +67,7 @@ func parseSharedFlags(args []string) (namespace string, since, until time.Durati
 	fs.StringVar(&namespace, "namespace", "default", "Kubernetes namespace")
 	fs.DurationVar(&since, "since", 1*time.Hour, "start of time window")
 	fs.DurationVar(&until, "until", 0, "end of time window (0 = now)")
-	fs.Parse(args)
+	_ = fs.Parse(args)
 	return
 }
 
@@ -78,19 +75,19 @@ func parseDiffFlags(args []string) (before, after time.Duration) {
 	fs := flag.NewFlagSet("diff", flag.ContinueOnError)
 	fs.DurationVar(&before, "since", 2*time.Hour, "start of before window")
 	fs.DurationVar(&after, "until", 1*time.Hour, "end of before window / start of after window")
-	fs.Parse(args)
+	_ = fs.Parse(args)
 	return
 }
 
 func newDataSource() client.DataSource {
 	return &client.MockClient{
-		EventsFn: func(ctx context.Context, namespace string, since, until time.Time) ([]types.Event, error) {
+		EventsFn: func(_ context.Context, _ string, _, _ time.Time) ([]types.Event, error) {
 			return mockEvents, nil
 		},
-		PodHistoryFn: func(ctx context.Context, namespace string, since, until time.Time) ([]types.Event, error) {
+		PodHistoryFn: func(_ context.Context, _ string, _, _ time.Time) ([]types.Event, error) {
 			return mockPodHistory, nil
 		},
-		ReplicaSetHistoryFn: func(ctx context.Context, namespace string, since, until time.Time) ([]types.Event, error) {
+		ReplicaSetHistoryFn: func(_ context.Context, _ string, _, _ time.Time) ([]types.Event, error) {
 			return mockReplicaSetHistory, nil
 		},
 	}
@@ -184,5 +181,4 @@ func cmdDiff(args []string) {
 	fmt.Printf("  Total events:    %d → %d (%+d)\n", result.Before.EventCount, result.After.EventCount, result.Delta.EventCount)
 	fmt.Printf("  Warnings:       %d → %d (%+d)\n", result.Before.WarningCount, result.After.WarningCount, result.Delta.WarningCount)
 	fmt.Printf("  Errors:         %d → %d (%+d)\n", result.Before.ErrorCount, result.After.ErrorCount, result.Delta.ErrorCount)
->>>>>>> 735c702 (feat(cmd): wire timeline, story, why, and diff subcommands with mock data)
 }
