@@ -4,7 +4,7 @@
 - Go CLI that correlates Kubernetes signals (events, pod status, ReplicaSet history) into incident narratives.
 - **Module:** `github.com/IbraAoad/kube-tale`
 - **Go version:** 1.26.2 (go.mod declares `go 1.26.2`; supported by golangci-lint-action v9.2.0+)
-- **Status:** M0 through M7 complete (real K8s client, integration tests).
+- **Status:** M0 through M7 complete. Released v0.1.1.
 - **Entrypoint:** `cmd/kube-tale`
 
 ## Environment
@@ -30,6 +30,8 @@
 - `develop` — integration branch. All feature PRs merge here.
 - `feat/*` — short-lived branches off `develop`.
 - Semver starting at `v0.1.0`. Tag triggers goreleaser release via `.goreleaser.yaml`.
+- **Releases only trigger on `v*` tags.** Docs-only commits (README, AGENTS.md, CODEOWNERS) never trigger releases. No direct pushes to `main` — only `git merge --ff-only develop` after tagging.
+- After tagging, fast-forward `main`: `git checkout main && git merge --ff-only develop && git push origin main`
 
 ## TDD Convention
 - Strict Red → Green → Refactor cycle per module.
@@ -56,3 +58,36 @@
 - Events are immutable, self-contained value objects.
 - `story.Generate()` is a pure function: `timeline → string`.
 - Timeline is `[]Event` sorted by time — no tree or graph.
+
+## Tooling Notes
+
+### goreleaser v2
+- Config uses `version: 2`. Key differences from v1:
+  - `archives.formats` (plural) — not `format` (singular, deprecated since v2.6)
+  - `changelog.use: github` — cleaner changelog generated from GitHub API
+  - `release.prerelease: auto` — auto-detects preview versions
+  - `release.footer` — custom message at the bottom of each release
+  - `archives.files` — bundles LICENSE + README in each archive
+  - `before.hooks: [go mod tidy]` — ensures clean deps before build
+  - Archive naming uses `x86_64` / `aarch64` (not `amd64` / `arm64`)
+
+### golangci-lint v2
+- Config requires `version: "2"` at the top
+- `gofmt` and `goimports` moved from `linters` to `formatters` section
+- `gosimple` merged into `staticcheck` — only enable `staticcheck`
+- `issues` section renamed to `linters.exclusions`
+- Action: `golangci/golangci-lint-action@v9.2.0` (supports Go 1.26)
+
+### GitHub Actions Versions (latest stable)
+| Action | Version |
+|--------|---------|
+| `actions/checkout` | `@v6` |
+| `actions/setup-go` | `@v6.4.0` |
+| `golangci-lint-action` | `@v9.2.0` |
+| `goreleaser-action` | `@v7.2.1` |
+| `helm/kind-action` | `@v1.14.0` |
+
+### K8s Dependencies
+- `k8s.io/client-go`, `k8s.io/api`, `k8s.io/apimachinery` pinned to `v0.35.4`
+- Matches k3s cluster running Kubernetes v1.35.4
+- All three modules must use the same minor version
