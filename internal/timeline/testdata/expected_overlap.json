@@ -1,0 +1,23 @@
+[
+  {
+    "timestamp": "2026-05-05T10:01:00Z",
+    "kind": "DeploymentUpdate",
+    "namespace": "default",
+    "source": "deployment/api",
+    "message": "Deployment api updated"
+  },
+  {
+    "timestamp": "2026-05-05T10:02:00Z",
+    "kind": "CrashLoopBackOff",
+    "namespace": "default",
+    "source": "pod/api-7d9",
+    "message": "Pod api-7d9 crashed"
+  },
+  {
+    "timestamp": "2026-05-05T10:02:00Z",
+    "kind": "EventWarning",
+    "namespace": "default",
+    "source": "pod/api-7d9",
+    "message": "Readiness probe failed"
+  }
+]

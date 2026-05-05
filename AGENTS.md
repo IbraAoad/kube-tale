@@ -43,7 +43,7 @@
 |--------|---------|--------|
 | `types`      | Shared Event, EventKind, Timeline structs | Done |
 | `client`     | DataSource interface + MockClient | Done |
-| `timeline`   | Merged, sorted sequence of events | Planned |
+| `timeline`   | Merged, sorted sequence of events | Done |
 | `story`      | Compressed human-readable narrative | Planned |
 | `why`        | Pattern-based root-cause scoring | Planned |
 | `diff`       | State comparison between two points in time | Planned |
