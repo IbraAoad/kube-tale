@@ -1,0 +1,16 @@
+[
+  {
+    "cause": "Out of Memory Kill",
+    "confidence": 0.9,
+    "evidence": ["Pod api-7d9 was OOMKilled"]
+  },
+  {
+    "cause": "Crash Loop",
+    "confidence": 0.7,
+    "evidence": [
+      "Back-off restarting failed container",
+      "Back-off restarting failed container",
+      "Back-off restarting failed container"
+    ]
+  }
+]

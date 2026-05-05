@@ -1,0 +1,11 @@
+[
+  {
+    "cause": "Probe Failure",
+    "confidence": 0.65,
+    "evidence": [
+      "Readiness probe failed (HTTP 500)",
+      "Readiness probe failed (HTTP 500)",
+      "Liveness probe failed (HTTP 500)"
+    ]
+  }
+]

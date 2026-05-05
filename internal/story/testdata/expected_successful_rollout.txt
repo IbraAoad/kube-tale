@@ -1,0 +1,1 @@
+Deployment api was updated (image: v1.2 → v1.3) and rolled out successfully.

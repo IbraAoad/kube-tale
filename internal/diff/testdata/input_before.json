@@ -1,0 +1,30 @@
+[
+  {
+    "timestamp": "2026-05-05T09:01:00Z",
+    "kind": "PodCreated",
+    "namespace": "default",
+    "source": "pod/api-1",
+    "message": "Pod api-1 created"
+  },
+  {
+    "timestamp": "2026-05-05T09:02:00Z",
+    "kind": "PodReady",
+    "namespace": "default",
+    "source": "pod/api-1",
+    "message": "Pod api-1 became ready"
+  },
+  {
+    "timestamp": "2026-05-05T09:03:00Z",
+    "kind": "PodCreated",
+    "namespace": "default",
+    "source": "pod/api-2",
+    "message": "Pod api-2 created"
+  },
+  {
+    "timestamp": "2026-05-05T09:04:00Z",
+    "kind": "PodReady",
+    "namespace": "default",
+    "source": "pod/api-2",
+    "message": "Pod api-2 became ready"
+  }
+]

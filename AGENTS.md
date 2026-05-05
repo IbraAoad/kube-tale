@@ -3,8 +3,8 @@
 ## Project
 - Go CLI that correlates Kubernetes signals (events, pod status, ReplicaSet history) into incident narratives.
 - **Module:** `github.com/IbraAoad/kube-tale`
-- **Go version:** 1.26.2
-- **Status:** Bootstrapped — M0 + M1 complete (types, mock client, CI).
+- **Go version:** 1.26.2 (go.mod declares `go 1.26.2`; supported by golangci-lint-action v9.2.0+)
+- **Status:** Bootstrapped — M0 through M6 complete (all modules + CLI wired).
 - **Entrypoint:** `cmd/kube-tale`
 
 ## Environment
@@ -16,7 +16,7 @@
 - Test (all):     `go test -race ./...`
 - Test (single):  `go test -race ./internal/timeline/`
 - Vet:            `go vet ./...`
-- Lint:           `golangci-lint run` (config: `.golangci.yml`)
+- Lint:           `golangci-lint run` (config: `.golangci.yml`, v2 format)
 - Mod tidy:       `go mod tidy`
 
 ## CI
@@ -44,9 +44,9 @@
 | `types`      | Shared Event, EventKind, Timeline structs | Done |
 | `client`     | DataSource interface + MockClient | Done |
 | `timeline`   | Merged, sorted sequence of events | Done |
-| `story`      | Compressed human-readable narrative | Planned |
-| `why`        | Pattern-based root-cause scoring | Planned |
-| `diff`       | State comparison between two points in time | Planned |
+| `story`      | Compressed human-readable narrative | Done |
+| `why`        | Pattern-based root-cause scoring | Done |
+| `diff`       | State comparison between two points in time | Done |
 
 ## Architecture Rules
 - All cluster access through `client.DataSource` interface. Never call `client-go` directly from logic packages.

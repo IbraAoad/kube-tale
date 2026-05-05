@@ -1,0 +1,38 @@
+[
+  {
+    "timestamp": "2026-05-05T10:01:00Z",
+    "kind": "DeploymentUpdate",
+    "namespace": "default",
+    "source": "deployment/api",
+    "message": "Deployment api updated (image: v1.2 → v1.3)",
+    "details": {"old_image": "v1.2", "new_image": "v1.3"}
+  },
+  {
+    "timestamp": "2026-05-05T10:02:00Z",
+    "kind": "PodCreated",
+    "namespace": "default",
+    "source": "pod/api-7d9",
+    "message": "Pod api-7d9 created"
+  },
+  {
+    "timestamp": "2026-05-05T10:03:00Z",
+    "kind": "PodReady",
+    "namespace": "default",
+    "source": "pod/api-7d9",
+    "message": "Pod api-7d9 became ready"
+  },
+  {
+    "timestamp": "2026-05-05T10:02:10Z",
+    "kind": "PodCreated",
+    "namespace": "default",
+    "source": "pod/api-8a1",
+    "message": "Pod api-8a1 created"
+  },
+  {
+    "timestamp": "2026-05-05T10:03:10Z",
+    "kind": "PodReady",
+    "namespace": "default",
+    "source": "pod/api-8a1",
+    "message": "Pod api-8a1 became ready"
+  }
+]
