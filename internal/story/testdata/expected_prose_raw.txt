@@ -1,0 +1,1 @@
+Deployment traefik was updated and rolled out successfully.

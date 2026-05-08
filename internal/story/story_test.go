@@ -70,6 +70,26 @@ func TestGenerate_MixedPods(t *testing.T) {
 	}
 }
 
+func TestGenerate_ProseRawCondition(t *testing.T) {
+	tl := loadTimeline(t, "testdata/input_prose_raw.json")
+	expected := loadExpectedString(t, "testdata/expected_prose_raw.txt")
+
+	result := Generate(tl)
+	if result != expected {
+		t.Errorf("mismatch:\n got:\n%s\n want:\n%s", result, expected)
+	}
+}
+
+func TestGenerate_ProseFailedRollout(t *testing.T) {
+	tl := loadTimeline(t, "testdata/input_prose_failed.json")
+	expected := loadExpectedString(t, "testdata/expected_prose_failed.txt")
+
+	result := Generate(tl)
+	if result != expected {
+		t.Errorf("mismatch:\n got:\n%s\n want:\n%s", result, expected)
+	}
+}
+
 func TestGenerate_CrashLoopVerbose(t *testing.T) {
 	tl := loadTimeline(t, "testdata/input_verbose.json")
 	expected := loadExpectedString(t, "testdata/expected_crash_loop_verbose.txt")

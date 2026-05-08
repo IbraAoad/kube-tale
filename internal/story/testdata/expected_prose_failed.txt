@@ -1,0 +1,2 @@
+Deployment api deployment timed out but 1 pod(s) entered a crash loop.
+Pod api-7d9 was created but entered a crash loop (3 restarts).

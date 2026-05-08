@@ -20,12 +20,17 @@ func Generate(timeline types.Timeline) string {
 	skipPods := false
 
 	if deployment != nil {
-		msg := humanizeDeploymentMessage(*deployment)
+		msg := compressDeploymentMessage(*deployment)
 		if allPodsReady(podGroups) && len(podGroups) > 0 {
-			msg += " and rolled out successfully."
 			skipPods = true
+			msg = suffixMessage(msg, func() bool { return allPodsReady(podGroups) })
 		} else {
-			msg += "."
+			if crashCount := crashPodCount(podGroups); crashCount > 0 {
+				msg = fmt.Sprintf("%s but %d pod(s) entered a crash loop.", msg, crashCount)
+				skipPods = false
+			} else {
+				msg = suffixMessage(msg, nil)
+			}
 		}
 		parts = append(parts, msg)
 	}
@@ -55,12 +60,17 @@ func GenerateVerbose(timeline types.Timeline) string {
 	skipPods := false
 
 	if deployment != nil {
-		msg := humanizeDeploymentMessage(*deployment)
+		msg := compressDeploymentMessage(*deployment)
 		if allPodsReady(podGroups) && len(podGroups) > 0 {
-			msg += " and rolled out successfully."
 			skipPods = true
+			msg = suffixMessage(msg, func() bool { return allPodsReady(podGroups) })
 		} else {
-			msg += "."
+			if crashCount := crashPodCount(podGroups); crashCount > 0 {
+				msg = fmt.Sprintf("%s but %d pod(s) entered a crash loop.", msg, crashCount)
+				skipPods = false
+			} else {
+				msg = suffixMessage(msg, nil)
+			}
 		}
 		parts = append(parts, msg)
 	}
@@ -124,6 +134,49 @@ func humanizeDeploymentMessage(e types.Event) string {
 		}
 	}
 	return msg
+}
+
+func compressDeploymentMessage(e types.Event) string {
+	name := deploymentName(e.Source)
+	raw := e.Message
+
+	if strings.Contains(raw, "Progressing=True") && strings.Contains(raw, "successfully progressed") {
+		return fmt.Sprintf("Deployment %s was updated and rolled out successfully", name)
+	}
+	if strings.Contains(raw, "Progressing=False") {
+		if strings.Contains(raw, "timed out") {
+			return fmt.Sprintf("Deployment %s deployment timed out", name)
+		}
+		return fmt.Sprintf("Deployment %s is not progressing", name)
+	}
+	if strings.Contains(raw, "ReplicaFailure") && strings.Contains(raw, "True") {
+		return fmt.Sprintf("Deployment %s has a replica failure", name)
+	}
+
+	return humanizeDeploymentMessage(e)
+}
+
+func crashPodCount(groups []podGroup) int {
+	count := 0
+	for _, g := range groups {
+		if countKind(g.events, types.CrashLoopBackOff) > 0 {
+			count++
+		}
+	}
+	return count
+}
+
+func suffixMessage(msg string, ready func() bool) string {
+	if ready != nil && ready() {
+		if strings.Contains(msg, "rolled out successfully") {
+			return msg + "."
+		}
+		return msg + " and rolled out successfully."
+	}
+	if strings.HasSuffix(msg, ".") || strings.HasSuffix(msg, "!") || strings.HasSuffix(msg, "?") {
+		return msg
+	}
+	return msg + "."
 }
 
 type podGroup struct {
