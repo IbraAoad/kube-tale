@@ -70,6 +70,16 @@ func TestGenerate_MixedPods(t *testing.T) {
 	}
 }
 
+func TestGenerate_CrashLoopVerbose(t *testing.T) {
+	tl := loadTimeline(t, "testdata/input_verbose.json")
+	expected := loadExpectedString(t, "testdata/expected_crash_loop_verbose.txt")
+
+	result := GenerateVerbose(tl)
+	if result != expected {
+		t.Errorf("mismatch:\n got:\n%s\n want:\n%s", result, expected)
+	}
+}
+
 func TestGenerate_Empty(t *testing.T) {
 	tl := loadTimeline(t, "testdata/input_empty.json")
 	expected := loadExpectedString(t, "testdata/expected_empty.txt")
