@@ -139,12 +139,13 @@ func newMockDataSource() client.DataSource {
 }
 
 func cmdTimeline(args []string) {
-	fs := flag.NewFlagSet("timeline", flag.ContinueOnError)
 	var format string
-	fs.StringVar(&format, "format", "json", "output format: json or text")
-	_ = fs.Parse(args)
-
-	namespace, kubeconfig, output, since, until := parseSharedFlags(fs.Args())
+	{
+		fs := flag.NewFlagSet("timeline", flag.ContinueOnError)
+		fs.StringVar(&format, "format", "json", "output format: json or text")
+		_ = fs.Parse(args)
+	}
+	namespace, kubeconfig, output, since, until := parseSharedFlags(args)
 
 	ds := newDataSource(kubeconfig)
 	now := time.Now()
