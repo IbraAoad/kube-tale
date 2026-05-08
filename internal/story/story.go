@@ -20,16 +20,7 @@ func Generate(timeline types.Timeline) string {
 	skipPods := false
 
 	if deployment != nil {
-		msg := deployment.Message
-		if deployment.Details != nil {
-			if oldImg, ok := deployment.Details["old_image"]; ok {
-				if newImg, ok := deployment.Details["new_image"]; ok {
-					msg = fmt.Sprintf("Deployment %s was updated (image: %s → %s)",
-						deploymentName(deployment.Source), oldImg, newImg)
-				}
-			}
-		}
-
+		msg := humanizeDeploymentMessage(*deployment)
 		if allPodsReady(podGroups) && len(podGroups) > 0 {
 			msg += " and rolled out successfully."
 			skipPods = true
@@ -49,6 +40,90 @@ func Generate(timeline types.Timeline) string {
 	}
 
 	return strings.Join(parts, "\n") + "\n"
+}
+
+// GenerateVerbose produces a detailed narrative with timestamp-prefixed events
+// followed by the compressed summary.
+func GenerateVerbose(timeline types.Timeline) string {
+	if len(timeline) == 0 {
+		return ""
+	}
+
+	deployment, podGroups := partition(timeline)
+	var parts []string
+
+	skipPods := false
+
+	if deployment != nil {
+		msg := humanizeDeploymentMessage(*deployment)
+		if allPodsReady(podGroups) && len(podGroups) > 0 {
+			msg += " and rolled out successfully."
+			skipPods = true
+		} else {
+			msg += "."
+		}
+		parts = append(parts, msg)
+	}
+
+	crashCounts := make(map[string]int)
+	for _, e := range timeline {
+		if e.Kind == types.DeploymentUpdate {
+			parts = append(parts, fmt.Sprintf("[%s] %s",
+				e.Timestamp.Format("15:04"), humanizeDeploymentMessage(e)))
+			continue
+		}
+
+		switch e.Kind {
+		case types.PodCreated:
+			parts = append(parts, fmt.Sprintf("[%s] Pod %s was created",
+				e.Timestamp.Format("15:04"), podName(e.Source)))
+		case types.PodReady:
+			parts = append(parts, fmt.Sprintf("[%s] Pod %s became ready",
+				e.Timestamp.Format("15:04"), podName(e.Source)))
+		case types.CrashLoopBackOff:
+			crashCounts[e.Source]++
+			parts = append(parts, fmt.Sprintf("[%s] Pod %s entered CrashLoopBackOff (restart %d)",
+				e.Timestamp.Format("15:04"), podName(e.Source), crashCounts[e.Source]))
+		case types.PodOOMKilled:
+			parts = append(parts, fmt.Sprintf("[%s] Pod %s was OOMKilled",
+				e.Timestamp.Format("15:04"), podName(e.Source)))
+		case types.ProbeFailed:
+			parts = append(parts, fmt.Sprintf("[%s] Pod %s probe failed",
+				e.Timestamp.Format("15:04"), podName(e.Source)))
+		case types.ImagePullBackOff:
+			parts = append(parts, fmt.Sprintf("[%s] Pod %s image pull backoff",
+				e.Timestamp.Format("15:04"), podName(e.Source)))
+		default:
+			parts = append(parts, fmt.Sprintf("[%s] %s: %s",
+				e.Timestamp.Format("15:04"), string(e.Kind), e.Message))
+		}
+	}
+
+	parts = append(parts, "")
+
+	if !skipPods {
+		for _, grp := range podGroups {
+			story := narratePod(grp)
+			if story != "" {
+				parts = append(parts, story)
+			}
+		}
+	}
+
+	return strings.Join(parts, "\n") + "\n"
+}
+
+func humanizeDeploymentMessage(e types.Event) string {
+	msg := e.Message
+	if e.Details != nil {
+		if oldImg, ok := e.Details["old_image"]; ok {
+			if newImg, ok := e.Details["new_image"]; ok {
+				msg = fmt.Sprintf("Deployment %s was updated (image: %s → %s)",
+					deploymentName(e.Source), oldImg, newImg)
+			}
+		}
+	}
+	return msg
 }
 
 type podGroup struct {

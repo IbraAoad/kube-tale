@@ -200,7 +200,17 @@ func cmdTimeline(args []string) {
 }
 
 func cmdStory(args []string) {
-	namespace, kubeconfig, output, since, until := parseSharedFlags(args)
+	var verbose bool
+	var filtered []string
+	for _, a := range args {
+		if a == "--verbose" || a == "-verbose" {
+			verbose = true
+		} else {
+			filtered = append(filtered, a)
+		}
+	}
+
+	namespace, kubeconfig, output, since, until := parseSharedFlags(filtered)
 	ds := newDataSource(kubeconfig)
 	now := time.Now()
 	tl, err := timeline.Build(context.Background(), ds, namespace, now.Add(-since), now.Add(-until))
@@ -208,7 +218,12 @@ func cmdStory(args []string) {
 		fmt.Fprintf(os.Stderr, "error: %v\n", err)
 		os.Exit(1)
 	}
-	s := story.Generate(tl)
+	var s string
+	if verbose {
+		s = story.GenerateVerbose(tl)
+	} else {
+		s = story.Generate(tl)
+	}
 	switch output {
 	case "json":
 		out, _ := json.Marshal(map[string]string{"story": s})
