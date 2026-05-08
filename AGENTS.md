@@ -4,7 +4,7 @@
 - Go CLI that correlates Kubernetes signals (events, pod status, ReplicaSet history) into incident narratives.
 - **Module:** `github.com/IbraAoad/kube-tale`
 - **Go version:** 1.26.2 (go.mod declares `go 1.26.2`; supported by golangci-lint-action v9.2.0+)
-- **Status:** M0 through M7 complete. Released v0.1.1.
+- **Status:** v0.2.0 in development (all v0.2.0 feature PRs landed to `develop`).
 - **Entrypoint:** `cmd/kube-tale`
 
 ## Environment

@@ -2,31 +2,69 @@
 
 Turn scattered Kubernetes signals into structured incident narratives.
 
-kube-tale correlates existing Kubernetes signals — events, pod statuses, ReplicaSet history — and turns them into human-readable stories about **what happened, when, and why**.
-
-No new observability. Just smarter correlation of what you already have.
+kube-tale correlates existing K8s signals — events, pod status, ReplicaSet history — and
+turns them into human-readable stories about **what happened, when, and why**. No new
+observability. Just smarter correlation of what you already have.
 
 ## Features
 
-kube-tale is organized into four modules:
+| Command | What it does |
+|---------|-------------|
+| `timeline` | Merged chronological view of deployments, pod lifecycle, events, and restarts |
+| `story` | Compressed human-readable incident narrative with event-by-event detail (`--verbose`) |
+| `why` | Ranked root-cause hypotheses with confidence scores |
+| `diff` | State comparison between two points in time |
+| `version` | Go version, commit hash, and build date |
 
-| Module | Description | Status |
-|--------|-------------|--------|
-| **timeline** | Merged, sorted sequence of everything that happened (deployments, pod lifecycle, events, restarts) | Done |
-| **story** | Compressed human narrative — "This broke after a deployment update due to startup failures leading to crash loops." | Done |
-| **why** | Probabilistic root-cause guess using pattern-based scoring (OOMKilled, CrashLoopBackOff, probe failures, etc.) | Done |
-| **diff** | State comparison between two points in time (before/after deployment or incident) | Done |
+**Output:** JSON, YAML, or colored text tables. See [Usage](#usage) below.
 
-## Prerequisites
+**Summary footer:** Every `story` output ends with a tally of pods, errors, warnings, and
+deployments — a quick at-a-glance assessment.
 
-- **Go 1.26+** (or download pre-built binary from [Releases](https://github.com/IbraAoad/kube-tale/releases))
-- **Kubernetes cluster** — any K8s distribution (k3s, kind, minikube, production)
-- **kubectl** — optional, for manual verification
+## Quick Start
+
+```bash
+# Install
+go install github.com/IbraAoad/kube-tale@latest
+
+# Timeline (JSON or text table)
+kube-tale timeline --namespace default --since 1h --format text --no-color
+
+# Incident story (with verbose detail)
+kube-tale story --namespace default --since 1h --verbose
+
+# Root-cause analysis
+kube-tale why --namespace default --since 1h
+
+# State diff
+kube-tale diff --namespace default --since 2h --until 1h
+
+# Version info
+kube-tale version
+```
+
+Example output (`story`):
+
+```
+Deployment api was updated (image: v1.2 → v1.3) but 1 pod(s) entered a crash loop.
+Pod api-7d9 was created but entered a crash loop (3 restarts).
+
+Summary: 1 pods, 3 errors, 1 warnings, 1 deployment
+```
+
+Example output (`why`):
+
+```
+Root cause hypotheses:
+  1. Crash Loop (confidence: 0.70)
+     → Back-off restarting failed container
+     → Back-off restarting failed container
+     → Back-off restarting failed container
+```
 
 ## Installation
 
 ```bash
-# Install via Go
 go install github.com/IbraAoad/kube-tale@latest
 
 # Or build from source
@@ -35,73 +73,61 @@ cd kube-tale
 go build -o kube-tale ./cmd/kube-tale
 ```
 
-Or download pre-built binaries from [Releases](https://github.com/IbraAoad/kube-tale/releases).
+Pre-built binaries are available on [Releases](https://github.com/IbraAoad/kube-tale/releases).
 
-## Quick Start
+## Usage
 
-```bash
-# Show timeline for a namespace (auto-detects kubeconfig)
-kube-tale timeline --namespace default --since 1h
+All subcommands accept shared flags:
 
-# Show human-readable story
-kube-tale story --namespace default --since 1h
+| Flag | Description | Default |
+|------|-------------|---------|
+| `--namespace` | Kubernetes namespace | `default` |
+| `--since` | Start of time window (duration or RFC3339) | `1h` |
+| `--until` | End of time window (duration or RFC3339) | `0s` (now) |
+| `--kubeconfig` | Path to kubeconfig file | `$KUBECONFIG` |
+| `--output` | Output format: `json`, `yaml`, or `text` | (varies by cmd) |
 
-# Guess root cause
-kube-tale why --namespace default --since 1h
+Story-specific flags:
 
-# Diff state before and after a point in time
-kube-tale diff --namespace default --since 2h --until 1h
+| Flag | Description |
+|------|-------------|
+| `--verbose` | Show per-event timestamps alongside the compressed summary |
 
-# Explicit kubeconfig
-kube-tale timeline --namespace kube-system --kubeconfig ~/.kube/config --since 30m
-```
+Timeline-specific flags:
 
-Example output:
-
-```
-$ kube-tale story --namespace default --since 1h
-Deployment api was updated (image: v1.2 → v1.3).
-Pod api-7d9 was created but entered a crash loop (3 restarts).
-```
-
-```
-$ kube-tale why --namespace default --since 1h
-Root cause hypotheses:
-  1. Crash Loop (confidence: 0.70)
-     → Back-off restarting failed container
-     → Back-off restarting failed container
-     → Back-off restarting failed container
-```
+| Flag | Description | Default |
+|------|-------------|---------|
+| `--format` | Output style: `json` or `text` | `json` |
+| `--no-color` | Disable colored output | `false` |
 
 ## Architecture
 
-kube-tale uses only standard Kubernetes data sources via `client-go`:
+All cluster access goes through a `DataSource` interface using `client-go`:
 
-- **core/v1 Events** — Kubernetes event stream (with reason-to-kind mapping)
-- **Pod status / container status** — `containerStatuses` including restart counts, last state, ready state
-- **Deployments + ReplicaSet history** — deployment conditions and progress
+- **Events** — Kubernetes event stream with reason-to-kind mapping
+- **Pod status** — container statuses, restart counts, ready state
+- **Deployments + ReplicaSets** — conditions and rollout history
 
-All cluster access goes through a single `DataSource` interface, making the correlation engine fully testable without a real cluster.
+The correlation engine is fully testable without a real cluster.
 
 ## Development
 
 ```bash
-# Build
 go build -o kube-tale ./cmd/kube-tale
-
-# Run unit tests
 go test -race -cover ./...
-
-# Run lint
 golangci-lint run
+```
 
-# Integration tests (requires a running K8s cluster)
+Integration tests require a running K8s cluster:
+
+```bash
 go test -race -v -tags=integration ./internal/client/ ./cmd/kube-tale/
 ```
 
 ## Contributing
 
-Contributions are welcome! Please read [CONTRIBUTING.md](CONTRIBUTING.md) for details.
+Pull requests are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) and [AGENTS.md](AGENTS.md)
+for conventions (TDD, commit format, branching).
 
 ## License
 
