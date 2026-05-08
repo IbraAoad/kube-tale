@@ -82,7 +82,10 @@ func parseSharedFlags(args []string) (namespace, kubeconfig, output string, sinc
 	fs.StringVar(&untilStr, "until", "0s", "end of time window (duration or RFC3339, 0 = now)")
 	fs.StringVar(&kubeconfig, "kubeconfig", "", "path to kubeconfig file")
 	fs.StringVar(&output, "output", "", "output format: json, yaml, or text")
-	_ = fs.Parse(args)
+	if err := fs.Parse(args); err != nil {
+		fmt.Fprintf(os.Stderr, "error parsing flags: %v\n", err)
+		os.Exit(1)
+	}
 
 	var err error
 	since, err = parseTimeWindowFlag(sinceStr)
