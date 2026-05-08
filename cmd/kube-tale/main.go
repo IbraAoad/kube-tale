@@ -7,6 +7,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"runtime"
 	"time"
 
 	"github.com/IbraAoad/kube-tale/internal/client"
@@ -17,7 +18,16 @@ import (
 	"github.com/IbraAoad/kube-tale/internal/why"
 )
 
-var version = "0.0.0-dev"
+var (
+	version   = "0.0.0-dev"
+	commit    = "unknown"
+	buildDate = "unknown"
+	goVersion = "unknown"
+)
+
+func init() {
+	goVersion = runtime.Version()
+}
 
 func main() {
 	if len(os.Args) < 2 {
@@ -35,7 +45,7 @@ func main() {
 	case "diff":
 		cmdDiff(os.Args[2:])
 	case "version":
-		if _, err := fmt.Fprintf(os.Stdout, "kube-tale %s\n", version); err != nil {
+		if _, err := fmt.Fprintf(os.Stdout, "kube-tale %s\n  git commit: %s\n  build date: %s\n  go version: %s\n", version, commit, buildDate, goVersion); err != nil {
 			os.Exit(1)
 		}
 	default:
