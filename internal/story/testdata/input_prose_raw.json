@@ -1,0 +1,23 @@
+[
+  {
+    "timestamp": "2026-05-05T10:01:00Z",
+    "kind": "DeploymentUpdate",
+    "namespace": "default",
+    "source": "deployment/traefik",
+    "message": "Deployment traefik: Progressing=True — ReplicaSet \"traefik\" has successfully progressed."
+  },
+  {
+    "timestamp": "2026-05-05T10:02:00Z",
+    "kind": "PodCreated",
+    "namespace": "default",
+    "source": "pod/traefik-abc123",
+    "message": "Pod traefik-abc123 created"
+  },
+  {
+    "timestamp": "2026-05-05T10:03:00Z",
+    "kind": "PodReady",
+    "namespace": "default",
+    "source": "pod/traefik-abc123",
+    "message": "Pod traefik-abc123 is ready"
+  }
+]
