@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"os"
 	"runtime"
+	"strings"
 	"time"
 
 	"github.com/IbraAoad/kube-tale/internal/client"
@@ -73,12 +74,13 @@ Flags:
 `)
 }
 
-func parseSharedFlags(args []string) (namespace, kubeconfig string, since, until time.Duration) {
+func parseSharedFlags(args []string) (namespace, kubeconfig, output string, since, until time.Duration) {
 	fs := flag.NewFlagSet("shared", flag.ContinueOnError)
 	fs.StringVar(&namespace, "namespace", "default", "Kubernetes namespace")
 	fs.DurationVar(&since, "since", 1*time.Hour, "start of time window")
 	fs.DurationVar(&until, "until", 0, "end of time window (0 = now)")
 	fs.StringVar(&kubeconfig, "kubeconfig", "", "path to kubeconfig file")
+	fs.StringVar(&output, "output", "", "output format: json, yaml, or text")
 	_ = fs.Parse(args)
 	return
 }
@@ -137,7 +139,7 @@ func newMockDataSource() client.DataSource {
 }
 
 func cmdTimeline(args []string) {
-	namespace, kubeconfig, since, until := parseSharedFlags(args)
+	namespace, kubeconfig, output, since, until := parseSharedFlags(args)
 	ds := newDataSource(kubeconfig)
 	now := time.Now()
 	tl, err := timeline.Build(context.Background(), ds, namespace, now.Add(-since), now.Add(-until))
@@ -145,12 +147,18 @@ func cmdTimeline(args []string) {
 		fmt.Fprintf(os.Stderr, "error: %v\n", err)
 		os.Exit(1)
 	}
-	out, _ := json.MarshalIndent(tl, "", "  ")
-	fmt.Println(string(out))
+	switch output {
+	case "yaml":
+		fmt.Print(formatYAMLTimeline(tl))
+	case "json":
+		fmt.Print(formatJSONTimeline(tl))
+	default:
+		fmt.Print(formatJSONTimeline(tl))
+	}
 }
 
 func cmdStory(args []string) {
-	namespace, kubeconfig, since, until := parseSharedFlags(args)
+	namespace, kubeconfig, output, since, until := parseSharedFlags(args)
 	ds := newDataSource(kubeconfig)
 	now := time.Now()
 	tl, err := timeline.Build(context.Background(), ds, namespace, now.Add(-since), now.Add(-until))
@@ -158,11 +166,20 @@ func cmdStory(args []string) {
 		fmt.Fprintf(os.Stderr, "error: %v\n", err)
 		os.Exit(1)
 	}
-	fmt.Print(story.Generate(tl))
+	s := story.Generate(tl)
+	switch output {
+	case "json":
+		out, _ := json.Marshal(map[string]string{"story": s})
+		fmt.Println(string(out))
+	case "yaml":
+		fmt.Printf("story: %q\n", s)
+	default:
+		fmt.Print(s)
+	}
 }
 
 func cmdWhy(args []string) {
-	namespace, kubeconfig, since, until := parseSharedFlags(args)
+	namespace, kubeconfig, output, since, until := parseSharedFlags(args)
 	ds := newDataSource(kubeconfig)
 	now := time.Now()
 	tl, err := timeline.Build(context.Background(), ds, namespace, now.Add(-since), now.Add(-until))
@@ -171,15 +188,37 @@ func cmdWhy(args []string) {
 		os.Exit(1)
 	}
 	results := why.Analyze(tl)
-	if len(results) == 0 {
-		fmt.Println("No root-cause hypotheses identified.")
-		return
-	}
-	fmt.Println("Root cause hypotheses:")
-	for i, h := range results {
-		fmt.Printf("  %d. %s (confidence: %.2f)\n", i+1, h.Cause, h.Confidence)
-		for _, ev := range h.Evidence {
-			fmt.Printf("     → %s\n", ev)
+	switch output {
+	case "json":
+		out, _ := json.MarshalIndent(results, "", "  ")
+		fmt.Println(string(out))
+	case "yaml":
+		if len(results) == 0 {
+			fmt.Println("[]")
+			return
+		}
+		for i, h := range results {
+			fmt.Printf("- cause: %q\n", h.Cause)
+			fmt.Printf("  confidence: %.2f\n", h.Confidence)
+			fmt.Print("  evidence:\n")
+			for _, e := range h.Evidence {
+				fmt.Printf("    - %q\n", e)
+			}
+			if i < len(results)-1 {
+				fmt.Println()
+			}
+		}
+	default:
+		if len(results) == 0 {
+			fmt.Println("No root-cause hypotheses identified.")
+			return
+		}
+		fmt.Println("Root cause hypotheses:")
+		for i, h := range results {
+			fmt.Printf("  %d. %s (confidence: %.2f)\n", i+1, h.Cause, h.Confidence)
+			for _, ev := range h.Evidence {
+				fmt.Printf("     → %s\n", ev)
+			}
 		}
 	}
 }
@@ -188,7 +227,7 @@ func cmdDiff(args []string) {
 	_ = flag.NewFlagSet("diff", flag.ContinueOnError)
 	before, after := parseDiffFlags(args)
 	_ = flag.NewFlagSet("diff", flag.ContinueOnError)
-	namespace, kubeconfig, _, _ := parseSharedFlags(args)
+	namespace, kubeconfig, output, _, _ := parseSharedFlags(args)
 	ds := newDataSource(kubeconfig)
 	now := time.Now()
 
@@ -204,11 +243,74 @@ func cmdDiff(args []string) {
 	}
 
 	result := diff.Compare(beforeTL, afterTL)
-	fmt.Printf("State change:\n")
-	fmt.Printf("  Running pods:   %d → %d (%+d)\n", result.Before.RunningPods, result.After.RunningPods, result.Delta.RunningPods)
-	fmt.Printf("  Crash loop pods: %d → %d (%+d)\n", result.Before.CrashLoopPods, result.After.CrashLoopPods, result.Delta.CrashLoopPods)
-	fmt.Printf("  Total restarts:  %d → %d (%+d)\n", result.Before.TotalRestarts, result.After.TotalRestarts, result.Delta.TotalRestarts)
-	fmt.Printf("  Total events:    %d → %d (%+d)\n", result.Before.EventCount, result.After.EventCount, result.Delta.EventCount)
-	fmt.Printf("  Warnings:       %d → %d (%+d)\n", result.Before.WarningCount, result.After.WarningCount, result.Delta.WarningCount)
-	fmt.Printf("  Errors:         %d → %d (%+d)\n", result.Before.ErrorCount, result.After.ErrorCount, result.Delta.ErrorCount)
+	switch output {
+	case "json":
+		out, _ := json.MarshalIndent(result, "", "  ")
+		fmt.Println(string(out))
+	case "yaml":
+		fmt.Print(formatYAMLDiff(result))
+	default:
+		fmt.Printf("State change:\n")
+		fmt.Printf("  Running pods:   %d → %d (%+d)\n", result.Before.RunningPods, result.After.RunningPods, result.Delta.RunningPods)
+		fmt.Printf("  Crash loop pods: %d → %d (%+d)\n", result.Before.CrashLoopPods, result.After.CrashLoopPods, result.Delta.CrashLoopPods)
+		fmt.Printf("  Total restarts:  %d → %d (%+d)\n", result.Before.TotalRestarts, result.After.TotalRestarts, result.Delta.TotalRestarts)
+		fmt.Printf("  Total events:    %d → %d (%+d)\n", result.Before.EventCount, result.After.EventCount, result.Delta.EventCount)
+		fmt.Printf("  Warnings:       %d → %d (%+d)\n", result.Before.WarningCount, result.After.WarningCount, result.Delta.WarningCount)
+		fmt.Printf("  Errors:         %d → %d (%+d)\n", result.Before.ErrorCount, result.After.ErrorCount, result.Delta.ErrorCount)
+	}
+}
+
+func formatJSONTimeline(tl types.Timeline) string {
+	out, _ := json.MarshalIndent(tl, "", "  ")
+	return string(out) + "\n"
+}
+
+func formatYAMLTimeline(tl types.Timeline) string {
+	if len(tl) == 0 {
+		return "[]\n"
+	}
+	var sb strings.Builder
+	for i, e := range tl {
+		fmt.Fprintf(&sb, "- timestamp: %q\n", e.Timestamp.Format(time.RFC3339))
+		fmt.Fprintf(&sb, "  kind: %q\n", e.Kind)
+		fmt.Fprintf(&sb, "  namespace: %q\n", e.Namespace)
+		fmt.Fprintf(&sb, "  source: %q\n", e.Source)
+		fmt.Fprintf(&sb, "  message: %q\n", e.Message)
+		if len(e.Details) > 0 {
+			sb.WriteString("  details:\n")
+			for k, v := range e.Details {
+				fmt.Fprintf(&sb, "    %s: %q\n", k, v)
+			}
+		}
+		if i < len(tl)-1 {
+			sb.WriteString("\n")
+		}
+	}
+	return sb.String()
+}
+
+func formatYAMLDiff(result diff.Result) string {
+	var sb strings.Builder
+	fmt.Fprintf(&sb, "before:\n")
+	fmt.Fprintf(&sb, "  running_pods: %d\n", result.Before.RunningPods)
+	fmt.Fprintf(&sb, "  crash_loop_pods: %d\n", result.Before.CrashLoopPods)
+	fmt.Fprintf(&sb, "  total_restarts: %d\n", result.Before.TotalRestarts)
+	fmt.Fprintf(&sb, "  event_count: %d\n", result.Before.EventCount)
+	fmt.Fprintf(&sb, "  warning_count: %d\n", result.Before.WarningCount)
+	fmt.Fprintf(&sb, "  error_count: %d\n", result.Before.ErrorCount)
+	fmt.Fprintf(&sb, "after:\n")
+	fmt.Fprintf(&sb, "  running_pods: %d\n", result.After.RunningPods)
+	fmt.Fprintf(&sb, "  crash_loop_pods: %d\n", result.After.CrashLoopPods)
+	fmt.Fprintf(&sb, "  total_restarts: %d\n", result.After.TotalRestarts)
+	fmt.Fprintf(&sb, "  event_count: %d\n", result.After.EventCount)
+	fmt.Fprintf(&sb, "  warning_count: %d\n", result.After.WarningCount)
+	fmt.Fprintf(&sb, "  error_count: %d\n", result.After.ErrorCount)
+	fmt.Fprintf(&sb, "delta:\n")
+	fmt.Fprintf(&sb, "  running_pods: %+d\n", result.Delta.RunningPods)
+	fmt.Fprintf(&sb, "  crash_loop_pods: %+d\n", result.Delta.CrashLoopPods)
+	fmt.Fprintf(&sb, "  total_restarts: %+d\n", result.Delta.TotalRestarts)
+	fmt.Fprintf(&sb, "  event_count: %+d\n", result.Delta.EventCount)
+	fmt.Fprintf(&sb, "  warning_count: %+d\n", result.Delta.WarningCount)
+	fmt.Fprintf(&sb, "  error_count: %+d\n", result.Delta.ErrorCount)
+	return sb.String()
 }
