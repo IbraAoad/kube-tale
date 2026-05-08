@@ -1,0 +1,7 @@
+Deployment api was updated (image: v1.2 → v1.3).
+[10:01] Deployment api was updated (image: v1.2 → v1.3)
+[10:02] Pod api-7d9 was created
+[10:03] Pod api-7d9 entered CrashLoopBackOff (restart 1)
+[10:04] Pod api-7d9 entered CrashLoopBackOff (restart 2)
+
+Pod api-7d9 was created but entered a crash loop (2 restarts).
