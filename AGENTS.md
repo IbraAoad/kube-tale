@@ -21,7 +21,7 @@
 - Mod tidy:       `go mod tidy`
 
 ## CI
-- `.github/workflows/ci.yml` — triggers on push to any branch and PR to `main`/`develop`. Runs lint → test (vet, race, coverage) → build → integration (kind cluster).
+- `.github/workflows/ci.yml` — triggers on PR to `main`/`develop` and push to `main`/`develop`. Runs lint → test (vet, race, coverage) → build → integration (kind cluster).
 - `.github/workflows/release.yml` — triggers on tag `v*`. Runs lint + test gates, then goreleaser.
 - All PRs must pass CI before merge.
 
