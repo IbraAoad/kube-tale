@@ -139,7 +139,14 @@ func newMockDataSource() client.DataSource {
 }
 
 func cmdTimeline(args []string) {
+	var format string
+	{
+		fs := flag.NewFlagSet("timeline", flag.ContinueOnError)
+		fs.StringVar(&format, "format", "json", "output format: json or text")
+		_ = fs.Parse(args)
+	}
 	namespace, kubeconfig, output, since, until := parseSharedFlags(args)
+
 	ds := newDataSource(kubeconfig)
 	now := time.Now()
 	tl, err := timeline.Build(context.Background(), ds, namespace, now.Add(-since), now.Add(-until))
@@ -147,11 +154,11 @@ func cmdTimeline(args []string) {
 		fmt.Fprintf(os.Stderr, "error: %v\n", err)
 		os.Exit(1)
 	}
-	switch output {
-	case "yaml":
+	switch {
+	case format == "text":
+		fmt.Print(formatTimelineText(tl))
+	case output == "yaml":
 		fmt.Print(formatYAMLTimeline(tl))
-	case "json":
-		fmt.Print(formatJSONTimeline(tl))
 	default:
 		fmt.Print(formatJSONTimeline(tl))
 	}
@@ -312,5 +319,46 @@ func formatYAMLDiff(result diff.Result) string {
 	fmt.Fprintf(&sb, "  event_count: %+d\n", result.Delta.EventCount)
 	fmt.Fprintf(&sb, "  warning_count: %+d\n", result.Delta.WarningCount)
 	fmt.Fprintf(&sb, "  error_count: %+d\n", result.Delta.ErrorCount)
+	return sb.String()
+}
+
+func formatTimelineText(tl types.Timeline) string {
+	if len(tl) == 0 {
+		return "(no events)\n"
+	}
+
+	maxTS := len("TIMESTAMP")
+	maxKind := len("KIND")
+	maxSrc := len("SOURCE")
+	maxMsg := len("MESSAGE")
+
+	for _, e := range tl {
+		ts := e.Timestamp.Format(time.RFC3339)
+		kind := string(e.Kind)
+		if l := len(ts); l > maxTS {
+			maxTS = l
+		}
+		if l := len(kind); l > maxKind {
+			maxKind = l
+		}
+		if l := len(e.Source); l > maxSrc {
+			maxSrc = l
+		}
+		if l := len(e.Message); l > maxMsg {
+			maxMsg = l
+		}
+	}
+
+	fmtStr := fmt.Sprintf("%%-%ds  %%-%ds  %%-%ds  %%s\n", maxTS, maxKind, maxSrc)
+
+	var sb strings.Builder
+	fmt.Fprintf(&sb, fmtStr, "TIMESTAMP", "KIND", "SOURCE", "MESSAGE")
+
+	for _, e := range tl {
+		ts := e.Timestamp.Format(time.RFC3339)
+		kind := string(e.Kind)
+		fmt.Fprintf(&sb, fmtStr, ts, kind, e.Source, e.Message)
+	}
+
 	return sb.String()
 }

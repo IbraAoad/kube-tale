@@ -5,6 +5,9 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"time"
+
+	"github.com/IbraAoad/kube-tale/internal/types"
 )
 
 func TestVersionOutputContainsBuildMetadata(t *testing.T) {
@@ -172,5 +175,48 @@ func TestDiffOutputYAML(t *testing.T) {
 	}
 	if !strings.Contains(output, "delta:") {
 		t.Errorf("expected YAML output with 'delta:', got: %s", output)
+	}
+}
+
+func TestFormatTimelineText_Empty(t *testing.T) {
+	result := formatTimelineText(types.Timeline{})
+	if result != "(no events)\n" {
+		t.Errorf("empty timeline: got %q, want %q", result, "(no events)\n")
+	}
+}
+
+func TestFormatTimelineText_SingleEvent(t *testing.T) {
+	tl := types.Timeline{
+		{
+			Timestamp: time.Date(2026, 5, 5, 10, 1, 0, 0, time.UTC),
+			Kind:      types.DeploymentUpdate,
+			Source:    "deployment/api",
+			Message:   "Deployment api updated",
+		},
+	}
+	result := formatTimelineText(tl)
+	if result == "" {
+		t.Error("expected non-empty output")
+	}
+}
+
+func TestFormatTimelineText_MultipleEvents(t *testing.T) {
+	tl := types.Timeline{
+		{
+			Timestamp: time.Date(2026, 5, 5, 10, 1, 0, 0, time.UTC),
+			Kind:      types.DeploymentUpdate,
+			Source:    "deployment/api",
+			Message:   "Deployment api updated",
+		},
+		{
+			Timestamp: time.Date(2026, 5, 5, 10, 2, 0, 0, time.UTC),
+			Kind:      types.CrashLoopBackOff,
+			Source:    "pod/api-7d9",
+			Message:   "Back-off restarting failed container",
+		},
+	}
+	result := formatTimelineText(tl)
+	if result == "" {
+		t.Error("expected non-empty output")
 	}
 }
