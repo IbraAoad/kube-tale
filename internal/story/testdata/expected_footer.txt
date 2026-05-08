@@ -1,0 +1,6 @@
+Deployment api updated but 1 pod(s) entered a crash loop.
+Pod api-7d9 was created but entered a crash loop (1 restarts).
+Pod api-8a1 was killed due to out-of-memory.
+Pod api-abc2 failed its health probe.
+
+Summary: 3 pods, 2 errors, 2 warnings, 1 deployment

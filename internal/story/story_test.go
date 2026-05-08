@@ -100,6 +100,16 @@ func TestGenerate_CrashLoopVerbose(t *testing.T) {
 	}
 }
 
+func TestGenerate_SummaryFooter(t *testing.T) {
+	tl := loadTimeline(t, "testdata/input_footer.json")
+	expected := loadExpectedString(t, "testdata/expected_footer.txt")
+
+	result := Generate(tl)
+	if result != expected {
+		t.Errorf("mismatch:\n got:\n%s\n want:\n%s", result, expected)
+	}
+}
+
 func TestGenerate_Empty(t *testing.T) {
 	tl := loadTimeline(t, "testdata/input_empty.json")
 	expected := loadExpectedString(t, "testdata/expected_empty.txt")
