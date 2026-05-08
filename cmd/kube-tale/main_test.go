@@ -25,8 +25,11 @@ func TestVersionOutputContainsBuildMetadata(t *testing.T) {
 
 	main()
 
-	w.Close()
-	out, _ := io.ReadAll(r)
+	_ = w.Close()
+	out, err := io.ReadAll(r)
+	if err != nil {
+		t.Fatal(err)
+	}
 	output := string(out)
 
 	if !strings.Contains(output, "git commit:") {
