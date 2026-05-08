@@ -76,12 +76,29 @@ Flags:
 
 func parseSharedFlags(args []string) (namespace, kubeconfig, output string, since, until time.Duration) {
 	fs := flag.NewFlagSet("shared", flag.ContinueOnError)
+	var sinceStr, untilStr string
 	fs.StringVar(&namespace, "namespace", "default", "Kubernetes namespace")
-	fs.DurationVar(&since, "since", 1*time.Hour, "start of time window")
-	fs.DurationVar(&until, "until", 0, "end of time window (0 = now)")
+	fs.StringVar(&sinceStr, "since", "1h", "start of time window (duration or RFC3339)")
+	fs.StringVar(&untilStr, "until", "0s", "end of time window (duration or RFC3339, 0 = now)")
 	fs.StringVar(&kubeconfig, "kubeconfig", "", "path to kubeconfig file")
 	fs.StringVar(&output, "output", "", "output format: json, yaml, or text")
-	_ = fs.Parse(args)
+	if err := fs.Parse(args); err != nil {
+		fmt.Fprintf(os.Stderr, "error parsing flags: %v\n", err)
+		os.Exit(1)
+	}
+
+	var err error
+	since, err = parseTimeWindowFlag(sinceStr)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "error: %v\n", err)
+		os.Exit(1)
+	}
+	until, err = parseTimeWindowFlag(untilStr)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "error: %v\n", err)
+		os.Exit(1)
+	}
+
 	return
 }
 
@@ -91,6 +108,24 @@ func parseDiffFlags(args []string) (before, after time.Duration) {
 	fs.DurationVar(&after, "until", 1*time.Hour, "end of before window / start of after window")
 	_ = fs.Parse(args)
 	return
+}
+
+func parseTimeWindowFlag(s string) (time.Duration, error) {
+	if s == "" || s == "0" {
+		return 0, nil
+	}
+
+	d, err := time.ParseDuration(s)
+	if err == nil {
+		return d, nil
+	}
+
+	t, err := time.Parse(time.RFC3339, s)
+	if err != nil {
+		return 0, fmt.Errorf("invalid time window value %q: must be a duration (e.g. 1h) or RFC3339 timestamp (e.g. 2026-05-05T10:00:00Z)", s)
+	}
+
+	return time.Since(t), nil
 }
 
 func newDataSource(kubeconfig string) client.DataSource {
