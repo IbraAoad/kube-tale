@@ -1,2 +1,4 @@
 Pod healthy-1 was created and became ready.
 Pod broken-1 was created but entered a crash loop (2 restarts).
+
+Summary: 2 pods, 2 errors, 0 warnings, 0 deployment
