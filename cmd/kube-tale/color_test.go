@@ -48,8 +48,8 @@ func TestApplyColors(t *testing.T) {
 
 func TestIsTerminal_PipeIsNotTerminal(t *testing.T) {
 	r, w, _ := os.Pipe()
-	defer r.Close()
-	defer w.Close()
+	defer func() { _ = r.Close() }()
+	defer func() { _ = w.Close() }()
 	if isStdoutTerminal() {
 		t.Log("stdout is a terminal (expected during interactive testing)")
 	}

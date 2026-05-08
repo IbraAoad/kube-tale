@@ -82,10 +82,7 @@ func parseSharedFlags(args []string) (namespace, kubeconfig, output string, sinc
 	fs.StringVar(&untilStr, "until", "0s", "end of time window (duration or RFC3339, 0 = now)")
 	fs.StringVar(&kubeconfig, "kubeconfig", "", "path to kubeconfig file")
 	fs.StringVar(&output, "output", "", "output format: json, yaml, or text")
-	if err := fs.Parse(args); err != nil {
-		fmt.Fprintf(os.Stderr, "error parsing flags: %v\n", err)
-		os.Exit(1)
-	}
+	_ = fs.Parse(args)
 
 	var err error
 	since, err = parseTimeWindowFlag(sinceStr)
@@ -175,9 +172,11 @@ func newMockDataSource() client.DataSource {
 
 func cmdTimeline(args []string) {
 	var format string
+	var noColor bool
 	{
 		fs := flag.NewFlagSet("timeline", flag.ContinueOnError)
 		fs.StringVar(&format, "format", "json", "output format: json or text")
+		fs.BoolVar(&noColor, "no-color", false, "disable colored output")
 		_ = fs.Parse(args)
 	}
 	namespace, kubeconfig, output, since, until := parseSharedFlags(args)
@@ -189,9 +188,12 @@ func cmdTimeline(args []string) {
 		fmt.Fprintf(os.Stderr, "error: %v\n", err)
 		os.Exit(1)
 	}
+
+	useColor := !noColor && isStdoutTerminal()
+
 	switch {
 	case format == "text":
-		fmt.Print(formatTimelineText(tl))
+		fmt.Print(formatTimelineTextColored(tl, useColor))
 	case output == "yaml":
 		fmt.Print(formatYAMLTimeline(tl))
 	default:
@@ -302,6 +304,38 @@ func cmdDiff(args []string) {
 	}
 }
 
+const (
+	colorReset  = "\033[0m"
+	colorRed    = "\033[31m"
+	colorGreen  = "\033[32m"
+	colorYellow = "\033[33m"
+)
+
+func colorize(msg string, kind types.EventKind) string {
+	switch kind {
+	case types.PodOOMKilled, types.PodEvicted, types.ImagePullBackOff:
+		return colorRed + msg + colorReset
+	case types.EventWarning, types.CrashLoopBackOff, types.ProbeFailed:
+		return colorYellow + msg + colorReset
+	case types.PodReady, types.EventNormal:
+		return colorGreen + msg + colorReset
+	default:
+		return msg
+	}
+}
+
+func applyColors(line string, kind types.EventKind) string {
+	return colorize(line, kind)
+}
+
+func isStdoutTerminal() bool {
+	fi, err := os.Stdout.Stat()
+	if err != nil {
+		return false
+	}
+	return (fi.Mode() & os.ModeCharDevice) != 0
+}
+
 func formatJSONTimeline(tl types.Timeline) string {
 	out, _ := json.MarshalIndent(tl, "", "  ")
 	return string(out) + "\n"
@@ -393,6 +427,53 @@ func formatTimelineText(tl types.Timeline) string {
 		ts := e.Timestamp.Format(time.RFC3339)
 		kind := string(e.Kind)
 		fmt.Fprintf(&sb, fmtStr, ts, kind, e.Source, e.Message)
+	}
+
+	return sb.String()
+}
+
+func formatTimelineTextColored(tl types.Timeline, useColor bool) string {
+	if len(tl) == 0 {
+		return "(no events)\n"
+	}
+
+	maxTS := len("TIMESTAMP")
+	maxKind := len("KIND")
+	maxSrc := len("SOURCE")
+	maxMsg := len("MESSAGE")
+
+	for _, e := range tl {
+		ts := e.Timestamp.Format(time.RFC3339)
+		kind := string(e.Kind)
+		if l := len(ts); l > maxTS {
+			maxTS = l
+		}
+		if l := len(kind); l > maxKind {
+			maxKind = l
+		}
+		if l := len(e.Source); l > maxSrc {
+			maxSrc = l
+		}
+		if l := len(e.Message); l > maxMsg {
+			maxMsg = l
+		}
+	}
+
+	fmtStr := fmt.Sprintf("%%-%ds  %%-%ds  %%-%ds  %%s\n", maxTS, maxKind, maxSrc)
+
+	var sb strings.Builder
+	fmt.Fprintf(&sb, fmtStr, "TIMESTAMP", "KIND", "SOURCE", "MESSAGE")
+
+	for _, e := range tl {
+		ts := e.Timestamp.Format(time.RFC3339)
+		kind := string(e.Kind)
+		src := e.Source
+		msg := e.Message
+		line := fmt.Sprintf(fmtStr, ts, kind, src, msg)
+		if useColor {
+			line = applyColors(line, e.Kind)
+		}
+		sb.WriteString(line)
 	}
 
 	return sb.String()
