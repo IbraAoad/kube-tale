@@ -44,7 +44,18 @@ func Generate(timeline types.Timeline) string {
 		}
 	}
 
-	return strings.Join(parts, "\n") + "\n"
+	result := strings.Join(parts, "\n")
+	if result != "" {
+		result += "\n"
+	}
+
+	fc := countFooter(timeline, podGroups, deployment)
+	footer := formatFooter(fc)
+	if footer != "" {
+		result += footer + "\n"
+	}
+
+	return result
 }
 
 // GenerateVerbose produces a detailed narrative with timestamp-prefixed events
@@ -118,6 +129,12 @@ func GenerateVerbose(timeline types.Timeline) string {
 				parts = append(parts, story)
 			}
 		}
+	}
+
+	fc := countFooter(timeline, podGroups, deployment)
+	footer := formatFooter(fc)
+	if footer != "" {
+		parts = append(parts, "", strings.TrimPrefix(footer, "\n"))
 	}
 
 	return strings.Join(parts, "\n") + "\n"
@@ -275,4 +292,44 @@ func deploymentName(source string) string {
 
 func podName(source string) string {
 	return strings.TrimPrefix(source, "pod/")
+}
+
+type footerCounts struct {
+	pods        int
+	errors      int
+	warnings    int
+	deployments int
+}
+
+func countFooter(timeline types.Timeline, podGroups []podGroup, deployment *types.Event) footerCounts {
+	var fc footerCounts
+
+	uniquePods := make(map[string]bool)
+	for _, g := range podGroups {
+		uniquePods[g.name] = true
+	}
+	fc.pods = len(uniquePods)
+
+	if deployment != nil {
+		fc.deployments = 1
+	}
+
+	for _, e := range timeline {
+		switch e.Kind {
+		case types.PodOOMKilled, types.CrashLoopBackOff, types.ImagePullBackOff:
+			fc.errors++
+		case types.EventWarning, types.ProbeFailed, types.PodEvicted:
+			fc.warnings++
+		}
+	}
+
+	return fc
+}
+
+func formatFooter(fc footerCounts) string {
+	if fc.pods == 0 && fc.errors == 0 && fc.warnings == 0 && fc.deployments == 0 {
+		return ""
+	}
+	return fmt.Sprintf("\nSummary: %d pods, %d errors, %d warnings, %d deployment",
+		fc.pods, fc.errors, fc.warnings, fc.deployments)
 }

@@ -1,1 +1,3 @@
 Deployment traefik was updated and rolled out successfully.
+
+Summary: 1 pods, 0 errors, 0 warnings, 1 deployment
