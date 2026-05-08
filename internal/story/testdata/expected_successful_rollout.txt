@@ -1,1 +1,3 @@
 Deployment api was updated (image: v1.2 → v1.3) and rolled out successfully.
+
+Summary: 2 pods, 0 errors, 0 warnings, 1 deployment
